@@ -1,4 +1,20 @@
-const { ApolloServer } = require('apollo-server');
+const { ApolloServer } = require('apollo-server')
+const { PrismaClient } = require('@prisma/client')
+const { PubSub } = require('apollo-server')
+const fs = require('fs')
+const path = require('path')
+const Query = require('./resolvers/Query')
+const Mutation = require('./resolvers/Mutation')
+const User = require('./resolvers/User')
+const Link = require('./resolvers/Link')
+const Subscription = require('./resolvers/Subscription')
+const Vote = require('./resolvers/Vote')
+
+const pubsub = new PubSub()
+const prisma = new PrismaClient()
+
+const { getUserId } = require('./utils');
+
 let links = [{
     id: 'link-0',
     url: 'www.howtographql.com',
@@ -6,22 +22,13 @@ let links = [{
   }]
 
 const resolvers = {
-    Query: {
-        info: () => 'hi',
-        feed: () => links
-    },
-    Mutation: {
-      post: (parent, args) => {
-         const link = {
-          id: `link-${idCount++}`,
-          description: args.description,
-          url: args.url,
-        }
-        links.push(link)
-        return link
-      }
-    }
-  }
+  Query,
+  Mutation,
+  User,
+  Link,
+  Subscription,
+  Vote,
+}
 
   const server = new ApolloServer({
     typeDefs: fs.readFileSync(
@@ -29,6 +36,17 @@ const resolvers = {
       'utf8'
     ),
     resolvers,
+    context: ({ req }) => {
+      return {
+        ...req,
+        prisma,
+        pubsub,
+        userId:
+          req && req.headers.authorization
+            ? getUserId(req)
+            : null
+      };
+    }
   })
 
   server
